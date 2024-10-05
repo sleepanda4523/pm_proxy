@@ -1,4 +1,5 @@
 venv/
 test/
+download_palm/
 
 __pycache__/

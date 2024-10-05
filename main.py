@@ -4,10 +4,11 @@ import subprocess
 import ctypes
 from pathlib import Path
 import asyncio
-import psutil
+from pytubefix import YouTube
+from pytubefix.cli import on_progress
 
 from mitmproxy import http
-from threading import Thread, Event
+from threading import Thread
 from mitmproxy.options import Options
 from mitmproxy.tools.dump import DumpMaster
 from mitmproxy import ctx
@@ -145,6 +146,16 @@ def parsing_yt_url(capture_dict):
             result.append(youtube_url+yt_id)
     return result    
     
+def downloadYouTube(videourl, path):
+    try:
+        yt = YouTube(videourl, on_progress_callback=on_progress)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        
+        ys = yt.streams.get_highest_resolution(progressive=False)
+        ys.download(path)
+    except Exception as e:
+        raise Exception(f"{videourl} Error: {e}")
 
 def main():
     cert_path = get_mitmproxy_cert_path()
@@ -163,7 +174,22 @@ def main():
     finally:
         set_windows_proxy(0, '')
         result = parsing_yt_url(proxy.capture_result)
-        print(result)
+        if len(result) > 0:
+            print(f"총 {len(result)}개의 영상 링크를 확보하였습니다. 영상 다운로드를 시작합니다.")
+            save_dir = os.getcwd() + "\\download_palm"
+            try:
+                for url_idx in range(len(result)):
+                    url = result[url_idx]
+                    print(f"{url_idx+1}. {url}")
+                    downloadYouTube(url, save_dir)
+                print(f"영상 다운로드를 완료 하였습니다. 영상 다운로드 위치는 {save_dir} 입니다.")
+                print(f"만약 고화질로 다운로드가 안될 경우, 상단 URL을 복사하여 4k video downloader와 같은 프로그램을 사용해주세요.")
+                
+            except Exception as e:
+                print(f"영상 다운로드 중 에러 발생. 관리자에게 문의해주세요.\n Error: {e}")
+        else :
+            print("영상 링크가 확인되지 않았습니다. 프로그램을 다시 실행해주세요.")
+        
 
 if __name__ == "__main__":
     main()
