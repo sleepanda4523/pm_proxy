@@ -6,6 +6,7 @@ from pathlib import Path
 import asyncio
 from pytubefix import YouTube
 from pytubefix.cli import on_progress
+from moviepy.editor import VideoFileClip, AudioFileClip
 
 from mitmproxy import http
 from threading import Thread
@@ -152,8 +153,21 @@ def downloadYouTube(videourl, path):
         if not os.path.exists(path):
             os.makedirs(path)
         
-        ys = yt.streams.get_highest_resolution(progressive=False)
-        ys.download(path)
+        yt_title = yt.title
+        video_stream = yt.streams.filter(adaptive=True, file_extension='mp4', only_video=True).order_by('resolution').desc().first()
+        audio_stream = yt.streams.filter(adaptive=True, file_extension='mp4', only_audio=True).order_by('abr').desc().first()
+
+        video_stream.download(filename=f'{path}\\{yt_title}_video.mp4')
+        audio_stream.download(filename=f'{path}\\{yt_title}_audio.mp4')
+        
+        video_clip = VideoFileClip(f'{path}\\{yt_title}_video.mp4')
+        audio_clip = AudioFileClip(f'{path}\\{yt_title}_audio.mp4')
+
+        final_clip = video_clip.set_audio(audio_clip)
+        final_clip.write_videofile(f'{path}\\{yt_title}.mp4', codec='libx264')
+        
+        os.remove(f'{path}\\{yt_title}_video.mp4')
+        os.remove(f'{path}\\{yt_title}_audio.mp4')
     except Exception as e:
         raise Exception(f"{videourl} Error: {e}")
 
@@ -174,17 +188,19 @@ def main():
     finally:
         set_windows_proxy(0, '')
         result = parsing_yt_url(proxy.capture_result)
+        print_list = []
         if len(result) > 0:
             print(f"총 {len(result)}개의 영상 링크를 확보하였습니다. 영상 다운로드를 시작합니다.")
             save_dir = os.getcwd() + "\\download_palm"
             try:
                 for url_idx in range(len(result)):
                     url = result[url_idx]
-                    print(f"{url_idx+1}. {url}")
+                    print_list.append(f"{url_idx+1}. {url}")
                     downloadYouTube(url, save_dir)
                 print(f"영상 다운로드를 완료 하였습니다. 영상 다운로드 위치는 {save_dir} 입니다.")
-                print(f"만약 고화질로 다운로드가 안될 경우, 상단 URL을 복사하여 4k video downloader와 같은 프로그램을 사용해주세요.")
-                
+                print(f"만약 고화질로 다운로드가 안될 경우, 하단 URL을 복사하여 4k video downloader와 같은 프로그램을 사용해주세요.")
+                for i in print_list:
+                    print(i)
             except Exception as e:
                 print(f"영상 다운로드 중 에러 발생. 관리자에게 문의해주세요.\n Error: {e}")
         else :
