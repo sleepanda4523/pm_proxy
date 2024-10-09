@@ -1,4 +1,5 @@
 import time, sys, os
+import atexit
 import platform
 import subprocess
 import ctypes
@@ -171,7 +172,21 @@ def downloadYouTube(videourl, path):
     except Exception as e:
         raise Exception(f"{videourl} Error: {e}")
 
+def run_proxy(proxy):
+    try:
+        print("프로그램이 작동 중입니다. ...을 켜서 다운로드하고자 하는 영상을 재생해주세요. \n재생되었다면(영상이 끝까지 실행되지 않아도 괜찮습니다. 정상적으로 재생되기만 하면 됩니다.) 키보드에서 Ctrl+C를 눌러주세요.")
+        loop = proxy.start_proxy()
+        time.sleep(3600)
+    except KeyboardInterrupt:
+        proxy.stop_proxy(loop)
+        return proxy
+
+def handle_stop_proxysetting():
+    set_windows_proxy(0, '')
+
 def main():
+    atexit.register(handle_stop_proxysetting)
+    
     cert_path = get_mitmproxy_cert_path()
     if cert_path is None:
         print("Mitmproxy 인증서가 생성되지 않았습니다. mitmproxy를 먼저 실행하여 인증서를 생성하세요.")
@@ -179,32 +194,26 @@ def main():
         install_mitmproxy_cert(cert_path)
     set_windows_proxy(1, f'{PROXY_HOST}:{PROXY_PORT}')
     proxy = myMitmproxy()
-    try:
-        print("프로그램이 작동 중입니다. ...을 켜서 다운로드하고자 하는 영상을 재생해주세요. \n재생되었다면(영상이 끝까지 실행되지 않아도 괜찮습니다. 정상적으로 재생되기만 하면 됩니다.) 키보드에서 Ctrl+C를 눌러주세요.")
-        loop = proxy.start_proxy()
-        time.sleep(3600)
-    except KeyboardInterrupt:
-        proxy.stop_proxy(loop)
-    finally:
-        set_windows_proxy(0, '')
-        result = parsing_yt_url(proxy.capture_result)
-        print_list = []
-        if len(result) > 0:
-            print(f"총 {len(result)}개의 영상 링크를 확보하였습니다. 영상 다운로드를 시작합니다.")
-            save_dir = os.getcwd() + "\\download_palm"
-            try:
-                for url_idx in range(len(result)):
-                    url = result[url_idx]
-                    print_list.append(f"{url_idx+1}. {url}")
-                    downloadYouTube(url, save_dir)
-                print(f"영상 다운로드를 완료 하였습니다. 영상 다운로드 위치는 {save_dir} 입니다.")
-                print(f"만약 고화질로 다운로드가 안될 경우, 하단 URL을 복사하여 4k video downloader와 같은 프로그램을 사용해주세요.")
-                for i in print_list:
-                    print(i)
-            except Exception as e:
-                print(f"영상 다운로드 중 에러 발생. 관리자에게 문의해주세요.\n Error: {e}")
-        else :
-            print("영상 링크가 확인되지 않았습니다. 프로그램을 다시 실행해주세요.")
+    proxy = run_proxy(proxy)
+    set_windows_proxy(0, '')
+    result = parsing_yt_url(proxy.capture_result)
+    print_list = []
+    if len(result) > 0:
+        print(f"총 {len(result)}개의 영상 링크를 확보하였습니다. 영상 다운로드를 시작합니다.")
+        save_dir = os.getcwd() + "\\download_palm"
+        try:
+            for url_idx in range(len(result)):
+                url = result[url_idx]
+                print_list.append(f"{url_idx+1}. {url}")
+                downloadYouTube(url, save_dir)
+            print(f"영상 다운로드를 완료 하였습니다. 영상 다운로드 위치는 {save_dir} 입니다.")
+            print(f"만약 고화질로 다운로드가 안될 경우, 하단 URL을 복사하여 4k video downloader와 같은 프로그램을 사용해주세요.")
+            for i in print_list:
+                print(i)
+        except Exception as e:
+            print(f"영상 다운로드 중 에러 발생. 관리자에게 문의해주세요.\n Error: {e}")
+    else :
+        print("영상 링크가 확인되지 않았습니다. 프로그램을 다시 실행해주세요.")
         
 
 if __name__ == "__main__":
