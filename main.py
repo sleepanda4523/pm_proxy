@@ -214,6 +214,7 @@ def main():
             print(f"영상 다운로드 중 에러 발생. 관리자에게 문의해주세요.\n Error: {e}")
     else :
         print("영상 링크가 확인되지 않았습니다. 프로그램을 다시 실행해주세요.")
+    os.system('pause')
         
 
 if __name__ == "__main__":
