@@ -32,7 +32,7 @@ msgpack==1.0.8
 numpy==2.1.2
 packaging==24.1
 passlib==1.7.4
-pefile==2024.8.26
+pefile==2023.2.7
 pillow==10.4.0
 proglog==0.1.10
 protobuf==5.27.3
@@ -42,8 +42,8 @@ pyasn1==0.6.1
 pyasn1_modules==0.4.1
 pycparser==2.22
 pydivert==2.1.0
-pyinstaller==6.10.0
-pyinstaller-hooks-contrib==2024.8
+pyinstaller==6.11.1
+pyinstaller-hooks-contrib==2025.0
 pylsqpack==0.3.18
 pyOpenSSL==24.2.1
 pyparsing==3.1.2

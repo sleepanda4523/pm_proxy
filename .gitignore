@@ -3,3 +3,4 @@ test/
 download_palm/
 main.exe
 __pycache__/
+error.log
