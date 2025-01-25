@@ -1,4 +1,4 @@
-import time, sys, os, datetime
+import time, sys, os, datetime, json
 import atexit
 import platform
 import subprocess
@@ -18,6 +18,8 @@ from mitmproxy import ctx
 PROXY_HOST = "127.0.0.1"
 PROXY_PORT = 7090
 PROCESS_NAME = "PalmPlusPlay" # change name
+
+token = {'potoken':'', 'visitData':''}
 
 def is_admin():
     try:
@@ -92,7 +94,7 @@ class ProxyAddon(object):
         if len(query) > 0:
             query = [list(query[x]) for x in range(len(query))]
         if self.filter_user_agent is not None and self.filter_user_agent in user_agent:
-            self.result['Filter'].append({"method":request.method, "url":request.url, "query":query})
+            self.result['Filter'].append({"method":request.method, "url":request.url, "query":query, 'content':request.content})
         else :
             self.result['Capture'].append({"method":request.method, "url":request.url, "query":query})
 
@@ -138,6 +140,11 @@ class myMitmproxy():
             print(e)
             self.master.shutdown()
 
+def byte_to_json(byte):
+    fix_byte_value = byte.replace(b"'", b'"')
+    convert_json = json.loads(fix_byte_value)
+    return convert_json
+
 def parsing_yt_url(capture_dict):
     result = []
     filter_list = capture_dict['Filter']
@@ -146,11 +153,20 @@ def parsing_yt_url(capture_dict):
         if "youtube.com/embed/" in data['url']:
             yt_id = data['url'].split('?')[0].split('youtube.com/embed/')[-1].split('/')[0]
             result.append(youtube_url+yt_id)
-    return result    
-    
+        if "v1/player" in data['url']:
+            body = byte_to_json(data['content'])
+            token['visitData'] = body['context']['client']['visitorData']
+            token['potoken'] = body['serviceIntegrityDimensions']['poToken']
+    return result, token  
+
+def token_verifier():
+   po_token = token['potoken']
+   visitor_data = token['visitData']
+   return visitor_data, po_token
+
 def downloadYouTube(videourl, path):
     try:
-        yt = YouTube(videourl, 'WEB', on_progress_callback=on_progress)
+        yt = YouTube(videourl, on_progress_callback=on_progress, use_po_token=True, po_token_verifier=token_verifier)
         if not path.exists():
             path.mkdir()
         
@@ -201,7 +217,7 @@ def main():
     proxy = myMitmproxy()
     proxy = run_proxy(proxy)
     set_windows_proxy(0, '')
-    result = parsing_yt_url(proxy.capture_result)
+    result, token = parsing_yt_url(proxy.capture_result)
     print_list = []
     if len(result) > 0:
         print(f"총 {len(result)}개의 영상 링크를 확보하였습니다. 영상 다운로드를 시작합니다.")
