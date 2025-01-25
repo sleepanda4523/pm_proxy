@@ -1,4 +1,4 @@
-import time, sys, os
+import time, sys, os, datetime
 import atexit
 import platform
 import subprocess
@@ -150,25 +150,30 @@ def parsing_yt_url(capture_dict):
     
 def downloadYouTube(videourl, path):
     try:
-        yt = YouTube(videourl, on_progress_callback=on_progress)
-        if not os.path.exists(path):
-            os.makedirs(path)
+        yt = YouTube(videourl, 'WEB', on_progress_callback=on_progress)
+        if not path.exists():
+            path.mkdir()
         
+        py_path = Path(path)
         yt_title = yt.title
         video_stream = yt.streams.filter(adaptive=True, file_extension='mp4', only_video=True).order_by('resolution').desc().first()
         audio_stream = yt.streams.filter(adaptive=True, file_extension='mp4', only_audio=True).order_by('abr').desc().first()
 
-        video_stream.download(filename=f'{path}\\{yt_title}_video.mp4')
-        audio_stream.download(filename=f'{path}\\{yt_title}_audio.mp4')
+        video_stream.download(output_path=str(py_path), filename=f'{yt_title}_video.mp4')
+        audio_stream.download(output_path=str(py_path), filename=f'{yt_title}_audio.mp4')
         
-        video_clip = VideoFileClip(f'{path}\\{yt_title}_video.mp4')
-        audio_clip = AudioFileClip(f'{path}\\{yt_title}_audio.mp4')
+        video_path = py_path / f'{yt_title}_video.mp4'
+        audio_path = py_path / f'{yt_title}_audio.mp4'
+        
+        video_clip = VideoFileClip(str(video_path))
+        audio_clip = AudioFileClip(str(audio_path))
 
+        result_path = py_path / f'{yt_title}.mp4'
         final_clip = video_clip.set_audio(audio_clip)
-        final_clip.write_videofile(f'{path}\\{yt_title}.mp4', codec='libx264')
+        final_clip.write_videofile(str(result_path), codec='libx264')
         
-        os.remove(f'{path}\\{yt_title}_video.mp4')
-        os.remove(f'{path}\\{yt_title}_audio.mp4')
+        os.remove(video_path)
+        os.remove(audio_path)
     except Exception as e:
         raise Exception(f"{videourl} Error: {e}")
 
@@ -200,18 +205,23 @@ def main():
     print_list = []
     if len(result) > 0:
         print(f"총 {len(result)}개의 영상 링크를 확보하였습니다. 영상 다운로드를 시작합니다.")
-        save_dir = os.getcwd() + "\\download_palm"
+        save_dir = Path.cwd() / 'download_palm'
         try:
             for url_idx in range(len(result)):
                 url = result[url_idx]
                 print_list.append(f"{url_idx+1}. {url}")
                 downloadYouTube(url, save_dir)
-            print(f"영상 다운로드를 완료 하였습니다. 영상 다운로드 위치는 {save_dir} 입니다.")
+            print(f"영상 다운로드를 완료 하였습니다. 영상 다운로드 위치는 {str(save_dir)} 입니다.")
             print(f"만약 고화질로 다운로드가 안될 경우, 하단 URL을 복사하여 4k video downloader와 같은 프로그램을 사용해주세요.")
             for i in print_list:
                 print(i)
         except Exception as e:
-            print(f"영상 다운로드 중 에러 발생. 관리자에게 문의해주세요.\n Error: {e}")
+            print(f"영상 다운로드 중 에러 발생. 관리자에게 문의해주세요.")
+            with open('./error.log', 'a') as f:
+                f.write(f"{datetime.datetime.now} : {e}")
+            print(f"영상 다운로드에 실패한 경우, 하단 URL을 복사하여 4k video downloader와 같은 프로그램을 사용해주세요.")
+            for i in print_list:
+                print(i)
     else :
         print("영상 링크가 확인되지 않았습니다. 프로그램을 다시 실행해주세요.")
     os.system('pause')
